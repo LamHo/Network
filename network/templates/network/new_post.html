@@ -1,0 +1,38 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+    <script>
+        document.addEventListener('DOMContentLoaded',function(){
+            document.querySelector("#new_post").onsubmit = () => {
+            fetch('/createPost', {
+                method: 'POST',
+
+                body: JSON.stringify({
+                    content: document.querySelector('#content').value
+                })
+            })
+            .then(response => response.text())
+            .then(result => {
+                // Print result
+                alert(result);
+                
+            });
+
+            return false;
+        }
+        })
+        
+        
+
+        
+    </script>
+
+    <div style = "padding-left: 10px;">
+        <h1>New Post:</h1>
+        <form id = "new_post">
+            <textarea id="content" rows="5" cols="50" form ="new_post" ></textarea> <br>
+            <input id = "new_post-button" type = "submit" value = "Post">
+        </form>
+    </div>
+
+{% endblock %}

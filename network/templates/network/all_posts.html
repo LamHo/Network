@@ -1,0 +1,206 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){            
+                       
+            fetch(`/posts`)
+            .then(response => response.json())
+            .then(posts => {
+                // Count the total number of posts: 
+                const total = posts.length;
+
+                // Load 10  posts at a time
+                const quantity = 10;
+                
+                // Start with first post
+                let start = 0;
+                let end = start + quantity - 1;
+
+                if(end > (total - 1)){
+                    end = total - 1;               
+                }
+
+                if(total <= 10){
+                    document.querySelector("#buttons").style.display = "none";
+                }
+
+                load(start,end,total)
+
+                document.querySelector("#next_btn").onclick = () => {
+                    
+                    start = start + 10;
+                    end = start + quantity - 1;
+
+                    if(end > (total - 1)){
+                        end = total - 1;               
+                    }
+                                
+                    load(start,end,total);
+                    
+                }
+                document.querySelector("#prev_btn").onclick = () => {
+                    start = start - 10;
+                    end = start + quantity - 1;
+                    
+                    load(start,end,total);
+                    
+                }
+            })
+
+   
+
+        })
+
+        function load(start,end,total){
+            
+            fetch(`/posts?start=${start}&end=${end}`)
+            .then(response => response.json())
+            .then(posts => {
+                document.querySelector("#posts").innerHTML = '';
+                posts.forEach(post => {
+                    
+                    const poster = document.createElement('div');
+        
+                    poster.className = 'post';
+                    
+                    poster.style = 'border-style: groove; border-width: 0.5px;padding-left: 10px;';
+                    poster.innerHTML = `<p class = "post_id" style = "display: none;">${post.id}</p>
+                                        <p style = "font-size: 25px;"><a href = "/profile/${post.creator}" style = "text-decoration: none;"><b>${post.creator}</a></b></p>                                        
+                                        <p class = "content">${post.content}</p>
+                                        <p class = "edit_button"></p>
+                                        <p class = "edit_content" style = "display: none;">
+                                            <textarea class="edit_content_area" rows="3" cols="30"></textarea> <br> <button onclick = "save(this)">Save</button> <button onclick = "cancel(this)">Cancel</button>    
+                                        </p>
+                                        <p style = "color: gray;">${post.timestamp}</p>
+                                        <p class = "likes"><span style = "font-size: 20px; color: red;">&hearts;</span> <span class = "number_of_likes">${post.likes}</span></p>
+                                        <p class = "like_button"></p>           
+                                                                `;
+                    
+                    if( '{{user.username}}' === `${post.creator}`){
+                        poster.querySelector(".edit_button").innerHTML = "<button onclick = 'edit(this)'>Edit</button>";
+                    }
+                    
+                    if('{{user.username}}' === ''){ // Anonymous user
+                        poster.querySelector(".like_button").style.display = "none";
+                    }
+                    else if( `${post.likers}`.includes('{{user.username}}')){
+                        
+                        poster.querySelector(".like_button").innerHTML = "<button onclick = 'like_or_unlike(this)'>Unlike</button>";
+                    }
+                    else{
+                        poster.querySelector(".like_button").innerHTML = "<button onclick = 'like_or_unlike(this)'>Like</button>";
+                    }
+                    
+                    // Add mail to DOM
+                    document.querySelector("#posts").append(poster);
+                    const line = document.createElement('br');
+                    document.querySelector("#posts").append(line);
+                    
+                });
+
+                
+            })
+            
+            if(start == 0){
+                document.querySelector("#prev_btn").style.display = "none";
+                document.querySelector("#next_btn").style.display = "block";
+                }
+            else if(end == total-1){
+                document.querySelector("#next_btn").style.display = "none";
+                document.querySelector("#prev_btn").style.display = "block";
+            }
+            else {
+                document.querySelector("#next_btn").style.display = "block";
+                document.querySelector("#prev_btn").style.display = "block";
+            }
+        }
+
+        //Clicking the edit button
+        function edit(element){
+            element.parentElement.parentElement.querySelector(".content").style.display = 'none';
+            element.parentElement.parentElement.querySelector(".edit_button").style.display = 'none';
+            element.parentElement.parentElement.querySelector(".edit_content").style.display = 'block';
+            element.parentElement.parentElement.querySelector(".edit_content").querySelector(".edit_content_area").innerHTML = element.parentElement.parentElement.querySelector(".content").innerHTML;
+            
+        }
+
+        //Clicking the Cancel button when edditing content of a post
+        function cancel(element){
+            element.parentElement.parentElement.querySelector(".content").style.display = 'block';
+            element.parentElement.parentElement.querySelector(".edit_button").style.display = 'block';
+            element.parentElement.parentElement.querySelector(".edit_content").style.display = 'none';
+        }
+
+        //Clicking the Save button when edditing content of a post
+        function save(element){
+            new_content = element.parentElement.querySelector(".edit_content_area").value;
+            post_id = element.parentElement.parentElement.querySelector(".post_id").innerHTML;
+            
+            fetch(`/post/${post_id}`,{
+                    method: 'PUT',
+            
+                    body: JSON.stringify({
+                        new_content: new_content
+                    })  
+            
+                })
+                .then(response => response.json())
+                .then(post => {
+                    
+                    element.parentElement.parentElement.querySelector(".content").style.display = 'block';
+                    element.parentElement.parentElement.querySelector(".content").innerHTML = post.content;
+                    element.parentElement.parentElement.querySelector(".edit_button").style.display = 'block';
+                    element.parentElement.parentElement.querySelector(".edit_content").style.display = 'none';
+
+                })
+
+
+        }
+
+        //Clicking the Like or Unlike button
+        function like_or_unlike(element){
+            action = element.innerHTML;
+            post_id = element.parentElement.parentElement.querySelector(".post_id").innerHTML;
+
+            fetch(`/post/${post_id}`,{
+                    method: 'PUT',
+            
+                    body: JSON.stringify({
+                        action: action
+                    })  
+            
+                })
+                .then(response => response.json())
+                .then(post => {
+                    if (action === "Like"){
+                        element.innerHTML = "Unlike";
+                    }
+                    else{
+                        element.innerHTML = "Like";  
+                    }
+                    element.parentElement.parentElement.querySelector(".likes").querySelector(".number_of_likes").innerHTML = post.likes;
+                })
+
+
+        }
+
+    </script>
+
+    {% if not user.is_authenticated %}
+        <h1><i>Sign in to write and like posts</i></h1>
+    {% endif %}
+
+    <h2>All Posts:</h2>
+
+    <div id = "container" style="padding-left: 10px;">
+        <div id = "posts">
+            
+        </div>
+        <div id = "buttons" style="width:100%;text-align: center;">
+            <div style="display:inline-block;"><button id = "prev_btn" style="display:inline-block;">Previous</button></div> <div style="display:inline-block;"><button id = "next_btn" >Next</button></div>
+        </div>
+    </div>
+
+{% endblock %}
+
